@@ -4,14 +4,15 @@ import { join } from 'path';
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { [key: string]: string | string[] } }
 ) {
   try {
+    const { id } = context.params;
     const dataPath = join(process.cwd(), 'data', 'images.json');
     const data = await readFile(dataPath, 'utf-8');
     const images = JSON.parse(data);
 
-    const imageIndex = images.findIndex((img: any) => img.id === params.id);
+    const imageIndex = images.findIndex((img: any) => img.id === id);
     if (imageIndex === -1) {
       return NextResponse.json(
         { error: 'Image not found' },

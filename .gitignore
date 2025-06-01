@@ -3,9 +3,6 @@ node_modules/
 # Environment variables
 .env.local
 
-# Supabase configuration (remove this line after moving keys to env vars)
-src/lib/supabase.ts
-
 # Next.js build output
 .next/
 out/

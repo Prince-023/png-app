@@ -4,10 +4,10 @@ import { join } from 'path';
 
 export async function DELETE(
   request: NextRequest,
-  context: { params: { [key: string]: string | string[] } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = context.params;
+    const { id } = params;
     const dataPath = join(process.cwd(), 'data', 'images.json');
     const data = await readFile(dataPath, 'utf-8');
     const images = JSON.parse(data);

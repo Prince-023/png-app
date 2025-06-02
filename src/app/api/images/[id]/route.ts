@@ -4,10 +4,10 @@ import { supabase } from '@/lib/supabase';
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const id = params.id;
+    const id = context.params.id;
 
     // Get image data from Supabase
     const { data: image, error: fetchError } = await supabase

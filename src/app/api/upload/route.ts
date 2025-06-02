@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, readFile } from 'fs/promises';
-import { join } from 'path';
-import { v4 as uuidv4 } from 'uuid';
+import { cloudinary } from '@/lib/cloudinary';
+import { supabase } from '@/lib/supabase';
 
 interface ImageData {
   id: string;
@@ -30,40 +29,46 @@ export async function POST(request: NextRequest) {
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    const originalFilename = file.name;
 
-    // Create unique filename
-    const uniqueId = uuidv4();
-    const filename = `${uniqueId}-${file.name}`;
-    const uploadDir = join(process.cwd(), 'public', 'uploads');
-    const filepath = join(uploadDir, filename);
+    // Upload to Cloudinary
+    const result = await new Promise((resolve, reject) => {
+      cloudinary.uploader.upload_stream(
+        {
+          resource_type: 'image',
+          folder: 'png-gallery',
+          allowed_formats: ['png'],
+          use_filename: true,
+          unique_filename: false,
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      ).end(buffer);
+    });
 
-    // Save file
-    await writeFile(filepath, buffer);
+    const cloudinaryResult = result as any;
 
-    // Save metadata
-    const imageData: ImageData = {
-      id: uniqueId,
-      filename,
-      uploadedAt: new Date().toISOString()
-    };
+    // Store metadata in Supabase
+    const { data, error } = await supabase
+      .from('pngs')
+      .insert([
+        {
+          url: cloudinaryResult.secure_url,
+          public_id: cloudinaryResult.public_id,
+          filename: originalFilename,
+          created_at: new Date().toISOString(),
+        },
+      ])
+      .select()
+      .single();
 
-    // Read existing data
-    const dataPath = join(process.cwd(), 'data', 'images.json');
-    let images: ImageData[] = [];
-    try {
-      const data = await readFile(dataPath, 'utf-8');
-      images = JSON.parse(data);
-    } catch (error) {
-      // File doesn't exist yet, that's okay
+    if (error) {
+      throw new Error('Failed to store image metadata');
     }
 
-    // Add new image data
-    images.push(imageData);
-
-    // Write updated data
-    await writeFile(dataPath, JSON.stringify(images, null, 2));
-
-    return NextResponse.json({ success: true, image: imageData });
+    return NextResponse.json({ success: true, image: data });
   } catch (error) {
     console.error('Upload error:', error);
     return NextResponse.json(

@@ -2,12 +2,11 @@ import { NextResponse } from 'next/server';
 import { cloudinary } from '@/lib/cloudinary';
 import { supabase } from '@/lib/supabase';
 
-export async function DELETE(
-  request: Request,
-  context: { params: { id: string } }
-) {
+export async function DELETE(request: Request) {
   try {
-    const id = context.params.id;
+    // Extract id from the URL
+    const url = new URL(request.url);
+    const id = url.pathname.split('/').pop();
 
     // Get image data from Supabase
     const { data: image, error: fetchError } = await supabase

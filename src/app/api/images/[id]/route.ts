@@ -1,38 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readFile, writeFile, unlink } from 'fs/promises';
-import { join } from 'path';
+import { cloudinary } from '@/lib/cloudinary';
+import { supabase } from '@/lib/supabase';
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
-) {
+): Promise<NextResponse> {
   try {
     const { id } = params;
-    const dataPath = join(process.cwd(), 'data', 'images.json');
-    const data = await readFile(dataPath, 'utf-8');
-    const images = JSON.parse(data);
 
-    const imageIndex = images.findIndex((img: any) => img.id === id);
-    if (imageIndex === -1) {
+    // Get image data from Supabase
+    const { data: image, error: fetchError } = await supabase
+      .from('pngs')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !image) {
       return NextResponse.json(
         { error: 'Image not found' },
         { status: 404 }
       );
     }
 
-    const image = images[imageIndex];
-    const filepath = join(process.cwd(), 'public', 'uploads', image.filename);
-
-    // Delete file
+    // Delete from Cloudinary
     try {
-      await unlink(filepath);
+      await cloudinary.uploader.destroy(image.public_id);
     } catch (error) {
-      console.error('Error deleting file:', error);
+      console.error('Error deleting from Cloudinary:', error);
     }
 
-    // Remove from JSON
-    images.splice(imageIndex, 1);
-    await writeFile(dataPath, JSON.stringify(images, null, 2));
+    // Delete from Supabase
+    const { error: deleteError } = await supabase
+      .from('pngs')
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) {
+      throw deleteError;
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

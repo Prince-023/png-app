@@ -1,19 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { cloudinary } from '@/lib/cloudinary';
 import { supabase } from '@/lib/supabase';
 
-type RouteContext = {
-  params: {
-    id: string;
-  };
-};
-
 export async function DELETE(
-  request: NextRequest,
-  context: RouteContext
-): Promise<NextResponse> {
+  request: Request,
+  { params }: { params: { id: string } }
+) {
   try {
-    const { id } = context.params;
+    const id = params.id;
 
     // Get image data from Supabase
     const { data: image, error: fetchError } = await supabase
